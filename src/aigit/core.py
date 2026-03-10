@@ -133,7 +133,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
                 else:
                     console.print("[green]Command executed successfully![/green]")
                     # Fire-and-forget background thread to update project context
-                    threading.Thread(target=llm.update_project_context, args=(suggested_cmd, diff), daemon=True).start()
+                    threading.Thread(target=llm.update_project_context, args=(suggested_cmd, diff), daemon=False).start()
                 return exit_code
             elif user_input.lower() in ('n', 'no', 'q', 'quit', 'exit'):
                 console.print("[yellow]Execution canceled.[/yellow]")

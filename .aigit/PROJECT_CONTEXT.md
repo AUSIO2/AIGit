@@ -1,0 +1,1 @@
+- Fixed thread daemon setting to ensure project context updates complete properly

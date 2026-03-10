@@ -30,17 +30,44 @@ class GitClient:
         )
         return res.stdout.strip()
         
-    def get_git_diff(self, max_lines: int = 2000) -> str:
-        """Gets both staged and unstaged git diffs, truncated to max_lines."""
+    # Default noise patterns to exclude from diffs — auto-generated, cache, and build artifacts
+    DEFAULT_EXCLUDE_PATTERNS = [
+        "**/__pycache__/**",
+        "**/*.pyc",
+        "**/*.pyo",
+        "**/*.egg-info/**",
+        "**/.DS_Store",
+        "**/node_modules/**",
+        "**/*.min.js",
+        "**/*.min.css",
+        "**/.idea/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/.gradle/**",
+        "**/target/**",           # Java/Maven build output
+        "**/*.class",             # Java class files
+    ]
+
+    def get_git_diff(self, max_lines: int = 2000, extra_exclude: list = None) -> str:
+        """Gets both staged and unstaged git diffs, excluding auto-generated noise files."""
+        exclude_patterns = list(self.DEFAULT_EXCLUDE_PATTERNS)
+        if extra_exclude:
+            exclude_patterns.extend(extra_exclude)
+        
+        # Build git pathspec exclusion args: ':(exclude)pattern'
+        exclude_args = [f":(exclude){p}" for p in exclude_patterns]
+        base_args = ["--"]
+        pathspec = base_args + exclude_args if exclude_args else []
+
         staged = subprocess.run(
-            ["git", "diff", "--cached"],
+            ["git", "diff", "--cached"] + pathspec,
             capture_output=True,
             text=True,
             check=False
         ).stdout
             
         unstaged = subprocess.run(
-            ["git", "diff"],
+            ["git", "diff"] + pathspec,
             capture_output=True,
             text=True,
             check=False

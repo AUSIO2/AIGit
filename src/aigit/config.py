@@ -79,3 +79,7 @@ class ConfigManager:
 
     def get_prompt(self, key: str, default: str = "") -> str:
         return self._prompts.get(key, default)
+
+    def get_exclude_patterns(self) -> list:
+        """Returns user-defined extra diff exclude patterns from config.json."""
+        return self._config.get("exclude_patterns", [])

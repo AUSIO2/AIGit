@@ -69,7 +69,8 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
     with console.status("[cyan]Gathering git context...[/cyan]", spinner="dots"):
         branch = git.get_current_branch()
         status = git.get_status()
-        diff = git.get_git_diff(max_lines=2000)
+        extra_exclude = config.get_exclude_patterns()
+        diff = git.get_git_diff(max_lines=2000, extra_exclude=extra_exclude)
         recent_commits = git.get_recent_commits(limit=5)
         
         project_context = ""

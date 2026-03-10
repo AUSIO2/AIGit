@@ -112,7 +112,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
         console.print("")
         
         try:
-            user_input = Prompt.ask("Execute? [Y/n] or Explain?[e] or type instructions to modify").strip()
+            user_input = Prompt.ask("Execute? [Y/n] or Explain? \\[e] or type instructions to modify").strip()
             
             if user_input.lower() in ('y', 'yes', ''):
                 console.print("\n[cyan]Executing...[/cyan]")
@@ -125,7 +125,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
             elif user_input.lower() in ('n', 'no', 'q', 'quit', 'exit'):
                 console.print("[yellow]Execution canceled.[/yellow]")
                 return 0
-            elif any(token in user_input.lower().split() for token in ('-e', '--explain', 'explain')):
+            elif user_input.strip().lower() in ('e', 'explain'):
                 with console.status("[cyan]Generating structural explanation...[/cyan]", spinner="dots"):
                     try:
                         explanation = llm.explain_git_command(history)

@@ -1,5 +1,6 @@
 {
     "llm_provider": "openai",
-    "api_key": "YOUR_API_KEY_HERE",
-    "model": "gpt-4o-mini"
+    "api_base_url": "https://coding.dashscope.aliyuncs.com/v1",
+    "api_key": "sk-sp-b2e5e4c2e9eb460caa1a7dd71071667f",
+    "model": "qwen3-coder-plus"
 }

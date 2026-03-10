@@ -50,7 +50,7 @@ def init_aigit_dir():
     console.print("Remember to add [bold].aigit/config.json[/bold] to your .gitignore!")
 
 
-def execute_prompt(prompt: str, command_type: str = "general") -> int:
+def execute_prompt(prompt: str, command_type: str = "general", explain: bool = False) -> int:
     config = ConfigManager()
     
     if not config.is_configured():
@@ -77,6 +77,13 @@ def execute_prompt(prompt: str, command_type: str = "general") -> int:
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1
             
+    if explain:
+        with console.status("[cyan]Generating structural explanation...[/cyan]", spinner="dots"):
+            try:
+                explanation = llm.explain_git_command(history)
+            except Exception as e:
+                explanation = f"Failed to generate explanation: {e}"
+
     while True:
         # Format the command for better readability
         parts = []
@@ -95,6 +102,10 @@ def execute_prompt(prompt: str, command_type: str = "general") -> int:
         display_cmd = "\n&& ".join(parts)
 
         # Present suggestion to user
+        if explain:
+            console.print("\n[bold yellow]🤖 AI Explanation:[/bold yellow]")
+            console.print(Panel(explanation, expand=False, border_style="yellow"))
+            
         console.print("\n💡 [bold green]Suggested Command:[/bold green]")
         syntax = Syntax(display_cmd, "bash", theme="monokai", word_wrap=True)
         console.print(Panel(syntax, expand=False, border_style="cyan"))

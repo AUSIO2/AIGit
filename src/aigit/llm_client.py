@@ -51,6 +51,25 @@ class LLMClient:
         else:
             raise NotImplementedError(f"Provider {provider} not currently implemented.")
 
+    def explain_git_command(self, history: list) -> str:
+        """Asks the LLM to explain the generated git command using the current conversation history."""
+        api_key = self.config.get("api_key")
+        base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
+        model = self.config.get("model", "gpt-4o-mini")
+        provider = self.config.get("llm_provider", "openai")
+        
+        explain_prompt = self.config.get_prompt("user_prompt_template_explain")
+        if not explain_prompt:
+            explain_prompt = "Please explain the command you just generated concisely."
+            
+        messages = list(history)
+        messages.append({"role": "user", "content": explain_prompt})
+        
+        if provider == "openai":
+            return self._call_openai(api_key, base_url, model, messages)
+        else:
+            raise NotImplementedError(f"Provider {provider} not currently implemented.")
+
     def _call_openai(self, api_key: str, base_url: str, model: str, messages: list) -> str:
         headers = {
             "Content-Type": "application/json",

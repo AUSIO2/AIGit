@@ -7,6 +7,12 @@ def main():
     parser.add_argument("prompt", nargs="*", help="Natural language description of your Git intent")
     parser.add_argument("--init", action="store_true", help="Initialize .aigit directory in the current repository")
     
+    parser.add_argument(
+        "-e", "--explain",
+        action="store_true",
+        help="If set, the AI will provide a brief natural language explanation of the generated command before prompting for execution."
+    )
+    
     args = parser.parse_args()
     
     if args.init:
@@ -26,7 +32,7 @@ def main():
         # Do not strip the first word from the prompt, let the LLM see the whole intent
         
     user_prompt = " ".join(args.prompt)
-    return execute_prompt(user_prompt, command_type)
+    return execute_prompt(user_prompt, command_type, explain=args.explain)
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -86,6 +86,33 @@ class LLMClient:
         else:
             raise NotImplementedError(f"Provider {provider} not currently implemented.")
 
+    def debug_failed_command(self, failed_cmd: str, error_output: str, history: list) -> tuple[str, list]:
+        """Sends the failed command and its error output to the AI to generate a corrective command."""
+        api_key = self.config.get("api_key")
+        base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
+        model = self.config.get("model", "gpt-4o-mini")
+        provider = self.config.get("llm_provider", "openai")
+
+        debug_template = self.config.get_prompt("user_prompt_template_debug")
+        if not debug_template:
+            debug_template = (
+                "The following Git command just failed:\n{failed_cmd}\n\n"
+                "Error output:\n{error_output}\n\n"
+                "Analyze the error and provide a corrective bash command that fixes the issue. "
+                "Output ONLY the corrective bash command, no explanation."
+            )
+
+        debug_prompt = debug_template.format(failed_cmd=failed_cmd, error_output=error_output)
+        messages = list(history)
+        messages.append({"role": "user", "content": debug_prompt})
+
+        if provider == "openai":
+            fix_cmd = self._call_openai(api_key, base_url, model, messages)
+            messages.append({"role": "assistant", "content": fix_cmd})
+            return fix_cmd, messages
+        else:
+            raise NotImplementedError(f"Provider {provider} not currently implemented.")
+
     def _call_openai(self, api_key: str, base_url: str, model: str, messages: list) -> str:
         headers = {
             "Content-Type": "application/json",

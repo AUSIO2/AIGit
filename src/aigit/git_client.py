@@ -71,7 +71,7 @@ class GitClient:
         except Exception:
             return ""
 
-    def execute_command(self, cmd: str) -> int:
-        # Executes the user confirmed string command in the shell
-        res = subprocess.run(cmd, shell=True)
-        return res.returncode
+    def execute_command(self, cmd: str) -> tuple[int, str]:
+        """Executes the user confirmed string command in the shell. Returns (exit_code, stderr)."""
+        res = subprocess.run(cmd, shell=True, capture_output=False, stderr=subprocess.PIPE, text=True)
+        return res.returncode, res.stderr.strip()

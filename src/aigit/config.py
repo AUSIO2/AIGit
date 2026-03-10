@@ -60,7 +60,8 @@ class ConfigManager:
                 "**/.gradle/**",
                 "**/target/**",
                 "**/*.class"
-            ]
+            ],
+            "auto_debug_on_error": True
         }
         if custom_values:
             default_config.update(custom_values)
@@ -99,3 +100,7 @@ class ConfigManager:
     def get_exclude_patterns(self) -> list:
         """Returns user-defined extra diff exclude patterns from config.json."""
         return self._config.get("exclude_patterns", [])
+
+    def get_auto_debug(self) -> bool:
+        """Returns whether to auto-debug on command failure (default: True)."""
+        return self._config.get("auto_debug_on_error", True)

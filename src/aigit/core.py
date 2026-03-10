@@ -129,9 +129,22 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
             
             if user_input.lower() in ('y', 'yes', ''):
                 console.print("\n[cyan]Executing...[/cyan]")
-                exit_code = git.execute_command(suggested_cmd)
+                exit_code, stderr = git.execute_command(suggested_cmd)
                 if exit_code != 0:
                     console.print(f"[red]Command failed with exit code {exit_code}[/red]")
+                    if stderr:
+                        console.print(Panel(stderr, title="Error Output", border_style="red"))
+                    
+                    if config.get_auto_debug():
+                        console.print("\n[bold cyan]🔍 Command failed. Triggering auto-debug...[/bold cyan]")
+                        try:
+                            suggested_cmd, history = llm.debug_failed_command(suggested_cmd, stderr, history)
+                            # Update explain status so the loop shows the new command
+                            explain = None 
+                            continue # Loop back to show the suggested fix
+                        except Exception as e:
+                            console.print(f"[red]Auto-debug failed:[/red] {e}")
+                    return exit_code
                 else:
                     console.print("[green]Command executed successfully![/green]")
                     # Fire-and-forget background thread to update project context

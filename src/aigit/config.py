@@ -22,14 +22,19 @@ class ConfigManager:
         with open(self.prompts_file, "r", encoding="utf-8") as f:
             self._prompts = json.load(f)
 
-    def create_default_config(self):
+    def create_default_config(self, custom_values: Dict[str, Any] = None):
         default_config = {
             "llm_provider": "openai",
+            "api_base_url": "https://api.openai.com/v1",
             "api_key": "YOUR_API_KEY_HERE",
             "model": "gpt-4o-mini"
         }
+        if custom_values:
+            default_config.update(custom_values)
+            
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(default_config, f, indent=4)
+        self._config = default_config
 
     def create_default_prompts(self):
         # Load from internal package resource
@@ -41,7 +46,8 @@ class ConfigManager:
             # Fallback if resource is missing
             default_prompts = {
                 "system_prompt": "You are a Git assistant. Return only valid git commands.",
-                "user_prompt_template": "Branch: {branch}\nStatus: {status}\nIntent: {prompt}"
+                "user_prompt_template_general": "Branch: {branch}\nStatus: {status}\nIntent: {prompt}",
+                "user_prompt_template_commit": "Current branch: {branch}\nGit status:\n{status}\nGit Diff:\n{diff}\nUser intent: Create a commit. Info: {prompt}\nFocus on generating a highly descriptive and professional commit message based on the actual code changes (diff) and user intent. YOU MUST FOLLOW the Conventional Commits specification. The format should be `<type>(<scope>): <subject>`.\nAllowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert.\nDetermine the `<scope>` based on the files modified (e.g., `core`, `config`, `cli`). Provide the exact bash git command(s), including `git add` if necessary."
             }
 
         with open(self.prompts_file, "w", encoding="utf-8") as f:

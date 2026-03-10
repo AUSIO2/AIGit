@@ -1,5 +1,8 @@
 import os
 from rich.console import Console
+from rich.prompt import Prompt
+from rich.panel import Panel
+from rich.syntax import Syntax
 
 from .config import ConfigManager
 from .git_client import GitClient
@@ -21,7 +24,24 @@ def init_aigit_dir():
         return
         
     os.makedirs(config.aigit_dir, exist_ok=True)
-    config.create_default_config()
+    
+    # Interactive Configuration
+    console.print("\n[bold cyan]Welcome to aigit Setup![/bold cyan]")
+    console.print("Let's configure your AI proxy parameters.\n")
+    
+    provider = Prompt.ask("LLM Provider", default="openai")
+    api_base_url = Prompt.ask("API Base URL (Endpoint)", default="https://api.openai.com/v1")
+    model = Prompt.ask("Model Name", default="gpt-4o-mini")
+    api_key = Prompt.ask("API Key", password=True)
+    
+    custom_config = {
+        "llm_provider": provider,
+        "api_base_url": api_base_url,
+        "model": model,
+        "api_key": api_key if api_key else "YOUR_API_KEY_HERE"
+    }
+
+    config.create_default_config(custom_values=custom_config)
     config.create_default_prompts()
     
     console.print(f"[green]Initialized empty aigit directory in {config.aigit_dir}[/green]")
@@ -30,7 +50,7 @@ def init_aigit_dir():
     console.print("Remember to add [bold].aigit/config.json[/bold] to your .gitignore!")
 
 
-def execute_prompt(prompt: str) -> int:
+def execute_prompt(prompt: str, command_type: str = "general") -> int:
     config = ConfigManager()
     
     if not config.is_configured():
@@ -48,27 +68,58 @@ def execute_prompt(prompt: str) -> int:
     with console.status("[cyan]Gathering git context...[/cyan]", spinner="dots"):
         branch = git.get_current_branch()
         status = git.get_status()
+        diff = git.get_git_diff(max_lines=2000)
 
-    with console.status("[cyan]Translating intent to Git commands using AI...[/cyan]", spinner="dots"):
+    with console.status(f"[cyan]Translating {command_type} intent to Git commands using AI...[/cyan]", spinner="dots"):
         try:
-            suggested_cmd = llm.generate_git_command(prompt, branch, status)
+            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, command_type)
         except Exception as e:
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1
             
-    # Present suggestion to user
-    console.print("")
-    console.print("💡 [bold green]Suggested Command:[/bold green]")
-    console.print(f"  [cyan]{suggested_cmd}[/cyan]")
-    console.print("")
-    
-    try:
-        confirm = console.input("Execute this command? \\[Y/n] ")
-        if confirm.lower() in ('', 'y', 'yes'):
-            return git.execute_command(suggested_cmd)
-        else:
-            console.print("Execution canceled.")
-            return 0
-    except KeyboardInterrupt:
-        console.print("\nCanceled.")
-        return 1
+    while True:
+        # Format the command for better readability
+        parts = []
+        for c in suggested_cmd.split("&&"):
+            c = c.strip()
+            if c.startswith("git add "):
+                tokens = c.split()
+                if len(tokens) > 3:
+                    formatted = "git add \\\n  " + " \\\n  ".join(tokens[2:])
+                    parts.append(formatted)
+                else:
+                    parts.append(c)
+            else:
+                parts.append(c)
+                
+        display_cmd = "\n&& ".join(parts)
+
+        # Present suggestion to user
+        console.print("\n💡 [bold green]Suggested Command:[/bold green]")
+        syntax = Syntax(display_cmd, "bash", theme="monokai", word_wrap=True)
+        console.print(Panel(syntax, expand=False, border_style="cyan"))
+        console.print("")
+        
+        try:
+            user_input = Prompt.ask("Execute? [Y/n] or type instructions to modify").strip()
+            
+            if user_input.lower() in ('y', 'yes', ''):
+                console.print("\n[cyan]Executing...[/cyan]")
+                exit_code = git.execute_command(suggested_cmd)
+                if exit_code != 0:
+                    console.print(f"[red]Command failed with exit code {exit_code}[/red]")
+                else:
+                    console.print("[green]Command executed successfully![/green]")
+                return exit_code
+            elif user_input.lower() in ('n', 'no', 'q', 'quit', 'exit'):
+                console.print("[yellow]Execution canceled.[/yellow]")
+                return 0
+            else:
+                with console.status("[cyan]Refining command based on your instructions...[/cyan]", spinner="dots"):
+                    try:
+                        suggested_cmd, history = llm.refine_git_command(user_input, history)
+                    except Exception as e:
+                        console.print(f"[red]Error communicating with LLM:[/red] {e}")
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Canceled by user.[/yellow]")
+            return 1

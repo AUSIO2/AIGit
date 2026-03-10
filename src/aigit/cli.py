@@ -17,8 +17,16 @@ def main():
         parser.print_help()
         return 1
         
+    known_commands = {"commit", "rebase", "merge", "push", "pull"}
+    first_word = args.prompt[0].lower()
+    command_type = "general"
+    
+    if first_word in known_commands:
+        command_type = first_word
+        # Do not strip the first word from the prompt, let the LLM see the whole intent
+        
     user_prompt = " ".join(args.prompt)
-    return execute_prompt(user_prompt)
+    return execute_prompt(user_prompt, command_type)
 
 if __name__ == "__main__":
     sys.exit(main())

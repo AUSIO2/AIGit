@@ -29,6 +29,29 @@ class GitClient:
             check=False
         )
         return res.stdout.strip()
+        
+    def get_git_diff(self, max_lines: int = 2000) -> str:
+        """Gets both staged and unstaged git diffs, truncated to max_lines."""
+        staged = subprocess.run(
+            ["git", "diff", "--cached"],
+            capture_output=True,
+            text=True,
+            check=False
+        ).stdout
+            
+        unstaged = subprocess.run(
+            ["git", "diff"],
+            capture_output=True,
+            text=True,
+            check=False
+        ).stdout
+        
+        combined_diff = staged + "\n" + unstaged
+        lines = combined_diff.split('\n')
+        
+        if len(lines) > max_lines:
+            return '\n'.join(lines[:max_lines]) + f"\n... (diff truncated after {max_lines} lines) ..."
+        return combined_diff.strip()
 
     def execute_command(self, cmd: str) -> int:
         # Executes the user confirmed string command in the shell

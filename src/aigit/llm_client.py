@@ -6,7 +6,7 @@ class LLMClient:
     def __init__(self, config: ConfigManager):
         self.config = config
 
-    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, command_type: str = "general") -> tuple[str, list]:
+    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, recent_commits: str, command_type: str = "general") -> tuple[str, list]:
         api_key = self.config.get("api_key")
         base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
         model = self.config.get("model", "gpt-4o-mini")
@@ -20,7 +20,18 @@ class LLMClient:
         if not user_template:
             user_template = self.config.get_prompt("user_prompt_template_general")
             
-        user_prompt = user_template.format(branch=branch, status=status, diff=diff, prompt=prompt)
+        format_kwargs = {
+            "branch": branch,
+            "status": status,
+            "diff": diff,
+            "prompt": prompt,
+            "recent_commits": recent_commits
+        }
+        
+        try:
+            user_prompt = user_template.format(**format_kwargs)
+        except KeyError:
+            user_prompt = user_template.format(branch=branch, status=status, diff=diff, prompt=prompt)
 
         messages = [
             {"role": "system", "content": system_prompt},

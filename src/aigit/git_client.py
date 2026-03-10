@@ -53,6 +53,19 @@ class GitClient:
             return '\n'.join(lines[:max_lines]) + f"\n... (diff truncated after {max_lines} lines) ..."
         return combined_diff.strip()
 
+    def get_recent_commits(self, limit: int = 5) -> str:
+        """Gets recent commit history formatted as oneline."""
+        try:
+            res = subprocess.run(
+                ["git", "log", f"-n", str(limit), "--oneline"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            return res.stdout.strip()
+        except Exception:
+            return ""
+
     def execute_command(self, cmd: str) -> int:
         # Executes the user confirmed string command in the shell
         res = subprocess.run(cmd, shell=True)

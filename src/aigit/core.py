@@ -69,10 +69,11 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
         branch = git.get_current_branch()
         status = git.get_status()
         diff = git.get_git_diff(max_lines=2000)
+        recent_commits = git.get_recent_commits(limit=5)
 
     with console.status(f"[cyan]Translating {command_type} intent to Git commands using AI...[/cyan]", spinner="dots"):
         try:
-            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, command_type)
+            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, recent_commits, command_type)
         except Exception as e:
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1

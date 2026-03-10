@@ -4,9 +4,9 @@ from typing import Any, Dict
 
 class ConfigManager:
     def __init__(self):
-        self.aigit_dir = os.path.join(os.getcwd(), ".aigit")
-        self.config_file = os.path.join(self.aigit_dir, "config.json")
-        self.prompts_file = os.path.join(self.aigit_dir, "prompts.json")
+        self.aixgit_dir = os.path.join(os.getcwd(), ".aixgit")
+        self.config_file = os.path.join(self.aixgit_dir, "config.json")
+        self.prompts_file = os.path.join(self.aixgit_dir, "prompts.json")
         self._config: Dict[str, Any] = {}
         self._prompts: Dict[str, str] = {}
         if os.path.exists(self.config_file):

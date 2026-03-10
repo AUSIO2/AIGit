@@ -6,7 +6,7 @@ class LLMClient:
     def __init__(self, config: ConfigManager):
         self.config = config
 
-    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, recent_commits: str, project_context: str, command_type: str = "general") -> tuple[str, list]:
+    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, recent_commits: str, project_context: str, os_name: str, command_type: str = "general") -> tuple[str, list]:
         api_key = self.config.get("api_key")
         base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
         model = self.config.get("model", "gpt-4o-mini")
@@ -26,7 +26,8 @@ class LLMClient:
             "diff": diff,
             "prompt": prompt,
             "recent_commits": recent_commits,
-            "project_context": project_context
+            "project_context": project_context,
+            "os_name": os_name
         }
         
         try:
@@ -86,7 +87,7 @@ class LLMClient:
         else:
             raise NotImplementedError(f"Provider {provider} not currently implemented.")
 
-    def debug_failed_command(self, failed_cmd: str, error_output: str, history: list) -> tuple[str, list]:
+    def debug_failed_command(self, failed_cmd: str, error_output: str, history: list, os_name: str) -> tuple[str, list]:
         """Sends the failed command and its error output to the AI to generate a corrective command."""
         api_key = self.config.get("api_key")
         base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
@@ -96,13 +97,14 @@ class LLMClient:
         debug_template = self.config.get_prompt("user_prompt_template_debug")
         if not debug_template:
             debug_template = (
+                "Operating System: {os_name}\n"
                 "The following Git command just failed:\n{failed_cmd}\n\n"
                 "Error output:\n{error_output}\n\n"
-                "Analyze the error and provide a corrective bash command that fixes the issue. "
-                "Output ONLY the corrective bash command, no explanation."
+                "Analyze the error and provide a corrective command that fixes the issue. "
+                "Output ONLY the corrective command, no explanation."
             )
 
-        debug_prompt = debug_template.format(failed_cmd=failed_cmd, error_output=error_output)
+        debug_prompt = debug_template.format(failed_cmd=failed_cmd, error_output=error_output, os_name=os_name)
         messages = list(history)
         messages.append({"role": "user", "content": debug_prompt})
 
@@ -165,7 +167,7 @@ class LLMClient:
             else:
                 return
                 
-            context_file = os.path.join(self.config.aigit_dir, "PROJECT_CONTEXT.md")
+            context_file = os.path.join(self.config.aixgit_dir, "PROJECT_CONTEXT.md")
             lines = []
             if os.path.exists(context_file):
                 with open(context_file, "r") as f:

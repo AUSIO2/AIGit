@@ -9,11 +9,13 @@ from .config import ConfigManager
 from .git_client import GitClient
 from .llm_client import LLMClient
 import threading
+import platform
+import sys
 
 console = Console()
 
-def init_aigit_dir():
-    """Initializes the .aigit directory in current repo."""
+def init_aixgit_dir():
+    """Initializes the .aixgit directory in current repo."""
     git = GitClient()
     if not git.is_inside_work_tree():
         console.print("[red]Error: Not inside a valid git repository.[/red]")
@@ -21,14 +23,14 @@ def init_aigit_dir():
 
     config = ConfigManager()
     
-    if os.path.exists(config.aigit_dir):
-        console.print("[yellow]The .aigit directory already exists.[/yellow]")
+    if os.path.exists(config.aixgit_dir):
+        console.print("[yellow]The .aixgit directory already exists.[/yellow]")
         return
         
-    os.makedirs(config.aigit_dir, exist_ok=True)
+    os.makedirs(config.aixgit_dir, exist_ok=True)
     
     # Interactive Configuration
-    console.print("\n[bold cyan]Welcome to aigit Setup![/bold cyan]")
+    console.print("\n[bold cyan]Welcome to aixgit Setup![/bold cyan]")
     console.print("Let's configure your AI proxy parameters.\n")
     
     provider = Prompt.ask("LLM Provider", default="openai")
@@ -46,18 +48,18 @@ def init_aigit_dir():
     config.create_default_config(custom_values=custom_config)
     config.create_default_prompts()
     
-    console.print(f"[green]Initialized empty aigit directory in {config.aigit_dir}[/green]")
-    console.print("Please configure your API keys in [bold].aigit/config.json[/bold]")
-    console.print("You can also customize prompts in [bold].aigit/prompts.json[/bold]")
-    console.print("Remember to add [bold].aigit/config.json[/bold] to your .gitignore!")
+    console.print(f"[green]Initialized empty aixgit directory in {config.aixgit_dir}[/green]")
+    console.print("Please configure your API keys in [bold].aixgit/config.json[/bold]")
+    console.print("You can also customize prompts in [bold].aixgit/prompts.json[/bold]")
+    console.print("Remember to add [bold].aixgit/config.json[/bold] to your .gitignore!")
 
 
 def execute_prompt(prompt: str, command_type: str = "general", explain: str | None = None) -> int:
     config = ConfigManager()
     
     if not config.is_configured():
-        console.print("[red]Error: aigit is not configured or missing API key.[/red]")
-        console.print("Please run `aigit --init` and setup your API keys in .aigit/config.json")
+        console.print("[red]Error: aixgit is not configured or missing API key.[/red]")
+        console.print("Please run `aixgit --init` and setup your API keys in .aixgit/config.json")
         return 1
 
     git = GitClient()
@@ -75,7 +77,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
         recent_commits = git.get_recent_commits(limit=5)
         
         project_context = ""
-        context_file = os.path.join(config.aigit_dir, "PROJECT_CONTEXT.md")
+        context_file = os.path.join(config.aixgit_dir, "PROJECT_CONTEXT.md")
         if os.path.exists(context_file):
             try:
                 with open(context_file, "r") as f:
@@ -85,7 +87,10 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
 
     with console.status(f"[cyan]Translating {command_type} intent to Git commands using AI...[/cyan]", spinner="dots"):
         try:
-            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, recent_commits, project_context, command_type)
+            suggested_cmd, history = llm.generate_git_command(
+                prompt, branch, status, diff, recent_commits, 
+                project_context, platform.system(), command_type
+            )
         except Exception as e:
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1
@@ -99,13 +104,16 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
 
     while True:
         # Format the command for better readability
+        is_windows = platform.system() == "Windows"
+        line_cont = "^" if is_windows else "\\"
+        
         parts = []
         for c in suggested_cmd.split("&&"):
             c = c.strip()
             if c.startswith("git add "):
                 tokens = c.split()
                 if len(tokens) > 3:
-                    formatted = "git add \\\n  " + " \\\n  ".join(tokens[2:])
+                    formatted = f"git add {line_cont}\n  " + f" {line_cont}\n  ".join(tokens[2:])
                     parts.append(formatted)
                 else:
                     parts.append(c)
@@ -138,7 +146,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
                     if config.get_auto_debug():
                         console.print("\n[bold cyan]🔍 Command failed. Triggering auto-debug...[/bold cyan]")
                         try:
-                            suggested_cmd, history = llm.debug_failed_command(suggested_cmd, stderr, history)
+                            suggested_cmd, history = llm.debug_failed_command(suggested_cmd, stderr, history, platform.system())
                             # Update explain status so the loop shows the new command
                             explain = None 
                             continue # Loop back to show the suggested fix

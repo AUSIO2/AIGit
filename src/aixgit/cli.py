@@ -1,11 +1,15 @@
 import argparse
 import sys
-from .core import execute_prompt, init_aigit_dir
+from .core import execute_prompt, init_aixgit_dir
 
 def main():
-    parser = argparse.ArgumentParser(description="aigit - AI powered Git Assistant")
+    parser = argparse.ArgumentParser(description="aixgit - AI powered Git Assistant")
     parser.add_argument("prompt", nargs="*", help="Natural language description of your Git intent")
-    parser.add_argument("--init", action="store_true", help="Initialize .aigit directory in the current repository")
+    parser.add_argument(
+        "--init", 
+        action="store_true", 
+        help="Initialize .aixgit directory in the current repository"
+    )
     
     parser.add_argument(
         "-e", "--explain",
@@ -20,7 +24,7 @@ def main():
     args = parser.parse_args()
     
     if args.init:
-        init_aigit_dir()
+        init_aixgit_dir()
         return 0
         
     if not args.prompt:

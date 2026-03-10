@@ -1,2 +1,3 @@
 - Fixed thread daemon setting to ensure project context updates complete properly
 - Implemented diff filtering with default exclude patterns and config override support
+- Added configurable diff filtering with default exclude patterns and enhanced commit prompt analysis

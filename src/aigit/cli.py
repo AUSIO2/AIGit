@@ -9,8 +9,12 @@ def main():
     
     parser.add_argument(
         "-e", "--explain",
-        action="store_true",
-        help="If set, the AI will provide a brief natural language explanation of the generated command before prompting for execution."
+        nargs="?",
+        const="",
+        type=str,
+        default=None,
+        metavar="QUESTION",
+        help="Generate an AI explanation of the suggested command. Optionally pass a question, e.g. -e \"why rebase?\"."
     )
     
     args = parser.parse_args()

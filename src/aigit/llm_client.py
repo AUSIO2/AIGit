@@ -63,8 +63,9 @@ class LLMClient:
         else:
             raise NotImplementedError(f"Provider {provider} not currently implemented.")
 
-    def explain_git_command(self, history: list) -> str:
-        """Asks the LLM to explain the generated git command using the current conversation history."""
+    def explain_git_command(self, history: list, extra_prompt: str = "") -> str:
+        """Asks the LLM to explain the generated git command using the current conversation history.
+        If extra_prompt is given, the AI also answers that specific question in context."""
         api_key = self.config.get("api_key")
         base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
         model = self.config.get("model", "gpt-4o-mini")
@@ -73,6 +74,9 @@ class LLMClient:
         explain_prompt = self.config.get_prompt("user_prompt_template_explain")
         if not explain_prompt:
             explain_prompt = "Please explain the command you just generated concisely."
+        
+        if extra_prompt.strip():
+            explain_prompt = f"{explain_prompt}\n\nThe user also has a specific question: {extra_prompt.strip()}\nPlease answer this question in the context of the command above."
             
         messages = list(history)
         messages.append({"role": "user", "content": explain_prompt})

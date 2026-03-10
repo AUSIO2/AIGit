@@ -1,4 +1,5 @@
 import os
+import re
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.panel import Panel
@@ -51,7 +52,7 @@ def init_aigit_dir():
     console.print("Remember to add [bold].aigit/config.json[/bold] to your .gitignore!")
 
 
-def execute_prompt(prompt: str, command_type: str = "general", explain: bool = False) -> int:
+def execute_prompt(prompt: str, command_type: str = "general", explain: str | None = None) -> int:
     config = ConfigManager()
     
     if not config.is_configured():
@@ -89,10 +90,10 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1
             
-    if explain:
+    if explain is not None:
         with console.status("[cyan]Generating structural explanation...[/cyan]", spinner="dots"):
             try:
-                explanation = llm.explain_git_command(history)
+                explanation = llm.explain_git_command(history, extra_prompt=explain)
             except Exception as e:
                 explanation = f"Failed to generate explanation: {e}"
 
@@ -114,7 +115,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
         display_cmd = "\n&& ".join(parts)
 
         # Present suggestion to user
-        if explain:
+        if explain is not None:
             console.print("\n[bold yellow]🤖 AI Explanation:[/bold yellow]")
             console.print(Panel(explanation, expand=False, border_style="yellow"))
             
@@ -139,10 +140,13 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
             elif user_input.lower() in ('n', 'no', 'q', 'quit', 'exit'):
                 console.print("[yellow]Execution canceled.[/yellow]")
                 return 0
-            elif user_input.strip().lower() in ('e', 'explain'):
+            elif user_input.strip().lower() in ('e', 'explain') or re.match(r'^e[: ].+', user_input.strip(), re.IGNORECASE) or re.match(r'^explain[: ].+', user_input.strip(), re.IGNORECASE):
+                # Extract optional extra question after 'e:' / 'e ' / 'explain:' / 'explain '
+                extra_match = re.match(r'^(?:e|explain)[: ]\s*(.+)', user_input.strip(), re.IGNORECASE)
+                extra_prompt = extra_match.group(1).strip() if extra_match else ""
                 with console.status("[cyan]Generating structural explanation...[/cyan]", spinner="dots"):
                     try:
-                        explanation = llm.explain_git_command(history)
+                        explanation = llm.explain_git_command(history, extra_prompt=extra_prompt)
                         console.print("\n[bold yellow]🤖 AI Explanation:[/bold yellow]")
                         console.print(Panel(explanation, expand=False, border_style="yellow"))
                     except Exception as e:
@@ -151,7 +155,15 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
             else:
                 with console.status("[cyan]Refining command based on your instructions...[/cyan]", spinner="dots"):
                     try:
-                        suggested_cmd, history = llm.refine_git_command(user_input, history)
+                        refine_instruction = (
+                            f"[Note: the previous command was NOT executed. "
+                            f"Adjust the command to ALSO satisfy this additional requirement, "
+                            f"while PRESERVING the original intent and all previously selected files/operations. "
+                            f"Treat this as an ADDITIVE adjustment, NOT a replacement of the original command. "
+                            f"Do NOT drop the original command's purpose or file selections unless the user explicitly says so.] "
+                            f"{user_input}"
+                        )
+                        suggested_cmd, history = llm.refine_git_command(refine_instruction, history)
                     except Exception as e:
                         console.print(f"[red]Error communicating with LLM:[/red] {e}")
         except KeyboardInterrupt:

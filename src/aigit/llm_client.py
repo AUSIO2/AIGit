@@ -6,7 +6,7 @@ class LLMClient:
     def __init__(self, config: ConfigManager):
         self.config = config
 
-    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, recent_commits: str, command_type: str = "general") -> tuple[str, list]:
+    def generate_git_command(self, prompt: str, branch: str, status: str, diff: str, recent_commits: str, project_context: str, command_type: str = "general") -> tuple[str, list]:
         api_key = self.config.get("api_key")
         base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
         model = self.config.get("model", "gpt-4o-mini")
@@ -25,7 +25,8 @@ class LLMClient:
             "status": status,
             "diff": diff,
             "prompt": prompt,
-            "recent_commits": recent_commits
+            "recent_commits": recent_commits,
+            "project_context": project_context
         }
         
         try:
@@ -91,7 +92,7 @@ class LLMClient:
             "messages": messages,
             "temperature": 0.1
         }
-        
+
         endpoint = f"{base_url.rstrip('/')}/chat/completions"
         response = requests.post(
             endpoint,
@@ -99,10 +100,54 @@ class LLMClient:
             json=data,
             timeout=30
         )
-        
+
         if response.status_code != 200:
             raise Exception(f"OpenAI API Error ({response.status_code}): {response.text}")
-            
+
         result = response.json()
         content = result.get("choices", [])[0].get("message", {}).get("content", "")
         return content.strip().strip('`').strip() # Remove any potentially leaked markdown formatting
+
+    def update_project_context(self, command: str, diff: str) -> None:
+        """Asks the LLM to summarize the action and appends it to the project context memory file."""
+        import os
+        
+        api_key = self.config.get("api_key")
+        base_url = self.config.get("api_base_url", "https://api.openai.com/v1")
+        model = self.config.get("model", "gpt-4o-mini")
+        provider = self.config.get("llm_provider", "openai")
+        
+        update_prompt_template = self.config.get_prompt("user_prompt_template_context_update")
+        if not update_prompt_template:
+            return  # Fail silently if template is missing to avoid crashing post-execution
+            
+        user_prompt = update_prompt_template.format(command=command, diff=diff)
+        
+        messages = [
+            {"role": "system", "content": "You are a concise recorder of architectural choices."},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        try:
+            if provider == "openai":
+                summary_bullet = self._call_openai(api_key, base_url, model, messages)
+            else:
+                return
+                
+            context_file = os.path.join(self.config.aigit_dir, "PROJECT_CONTEXT.md")
+            lines = []
+            if os.path.exists(context_file):
+                with open(context_file, "r") as f:
+                    lines = f.readlines()
+            
+            # Keep only the last 50 entries to avoid bloat
+            if len(lines) > 50:
+                lines = lines[-50:]
+                
+            lines.append(summary_bullet.strip() + "\n")
+            
+            with open(context_file, "w") as f:
+                f.writelines(lines)
+                
+        except Exception:
+            pass # Fail silently as this is a background optimization task

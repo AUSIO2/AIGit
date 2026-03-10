@@ -7,6 +7,7 @@ from rich.syntax import Syntax
 from .config import ConfigManager
 from .git_client import GitClient
 from .llm_client import LLMClient
+import threading
 
 console = Console()
 
@@ -70,10 +71,19 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
         status = git.get_status()
         diff = git.get_git_diff(max_lines=2000)
         recent_commits = git.get_recent_commits(limit=5)
+        
+        project_context = ""
+        context_file = os.path.join(config.aigit_dir, "PROJECT_CONTEXT.md")
+        if os.path.exists(context_file):
+            try:
+                with open(context_file, "r") as f:
+                    project_context = f.read()
+            except Exception:
+                pass
 
     with console.status(f"[cyan]Translating {command_type} intent to Git commands using AI...[/cyan]", spinner="dots"):
         try:
-            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, recent_commits, command_type)
+            suggested_cmd, history = llm.generate_git_command(prompt, branch, status, diff, recent_commits, project_context, command_type)
         except Exception as e:
             console.print(f"[red]Error communicating with LLM:[/red] {e}")
             return 1
@@ -122,6 +132,8 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
                     console.print(f"[red]Command failed with exit code {exit_code}[/red]")
                 else:
                     console.print("[green]Command executed successfully![/green]")
+                    # Fire-and-forget background thread to update project context
+                    threading.Thread(target=llm.update_project_context, args=(suggested_cmd, diff), daemon=True).start()
                 return exit_code
             elif user_input.lower() in ('n', 'no', 'q', 'quit', 'exit'):
                 console.print("[yellow]Execution canceled.[/yellow]")

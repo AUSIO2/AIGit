@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/aigit/__init__.py
+src/aigit/__main__.py
+src/aigit/cli.py
+src/aigit/config.py
+src/aigit/core.py
+src/aigit/git_client.py
+src/aigit/llm_client.py
+src/aigit.egg-info/PKG-INFO
+src/aigit.egg-info/SOURCES.txt
+src/aigit.egg-info/dependency_links.txt
+src/aigit.egg-info/entry_points.txt
+src/aigit.egg-info/requires.txt
+src/aigit.egg-info/top_level.txt

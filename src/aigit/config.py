@@ -21,6 +21,23 @@ class ConfigManager:
     def load_prompts(self):
         with open(self.prompts_file, "r", encoding="utf-8") as f:
             self._prompts = json.load(f)
+        
+        # Self-healing: merge in any new keys from the canonical source template
+        resource_path = os.path.join(os.path.dirname(__file__), "prompts.json")
+        if os.path.exists(resource_path):
+            try:
+                with open(resource_path, "r", encoding="utf-8") as f:
+                    canonical = json.load(f)
+                updated = False
+                for key, value in canonical.items():
+                    if key not in self._prompts:
+                        self._prompts[key] = value
+                        updated = True
+                if updated:
+                    with open(self.prompts_file, "w", encoding="utf-8") as f:
+                        json.dump(self._prompts, f, indent=4)
+            except Exception:
+                pass
 
     def create_default_config(self, custom_values: Dict[str, Any] = None):
         default_config = {

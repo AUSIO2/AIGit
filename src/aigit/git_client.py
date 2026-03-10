@@ -30,34 +30,12 @@ class GitClient:
         )
         return res.stdout.strip()
         
-    # Default noise patterns to exclude from diffs — auto-generated, cache, and build artifacts
-    DEFAULT_EXCLUDE_PATTERNS = [
-        "**/__pycache__/**",
-        "**/*.pyc",
-        "**/*.pyo",
-        "**/*.egg-info/**",
-        "**/.DS_Store",
-        "**/node_modules/**",
-        "**/*.min.js",
-        "**/*.min.css",
-        "**/.idea/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/.gradle/**",
-        "**/target/**",           # Java/Maven build output
-        "**/*.class",             # Java class files
-    ]
-
-    def get_git_diff(self, max_lines: int = 2000, extra_exclude: list = None) -> str:
-        """Gets both staged and unstaged git diffs, excluding auto-generated noise files."""
-        exclude_patterns = list(self.DEFAULT_EXCLUDE_PATTERNS)
-        if extra_exclude:
-            exclude_patterns.extend(extra_exclude)
-        
+    def get_git_diff(self, max_lines: int = 2000, exclude_patterns: list = None) -> str:
+        """Gets both staged and unstaged git diffs, excluding configured noise files."""
         # Build git pathspec exclusion args: ':(exclude)pattern'
-        exclude_args = [f":(exclude){p}" for p in exclude_patterns]
-        base_args = ["--"]
-        pathspec = base_args + exclude_args if exclude_args else []
+        pathspec = []
+        if exclude_patterns:
+            pathspec = ["--"] + [f":(exclude){p}" for p in exclude_patterns]
 
         staged = subprocess.run(
             ["git", "diff", "--cached"] + pathspec,
@@ -80,11 +58,11 @@ class GitClient:
             return '\n'.join(lines[:max_lines]) + f"\n... (diff truncated after {max_lines} lines) ..."
         return combined_diff.strip()
 
-    def get_recent_commits(self, limit: int = 5) -> str:
-        """Gets recent commit history formatted as oneline."""
+    def get_recent_commits(self, limit: int = 10) -> str:
+        """Gets recent commit history with subject and body for style analysis."""
         try:
             res = subprocess.run(
-                ["git", "log", f"-n", str(limit), "--oneline"],
+                ["git", "log", f"-n{limit}", "--pretty=format:%s%n%b%n---"],
                 capture_output=True,
                 text=True,
                 check=False

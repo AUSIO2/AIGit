@@ -70,7 +70,7 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: bool = F
         branch = git.get_current_branch()
         status = git.get_status()
         extra_exclude = config.get_exclude_patterns()
-        diff = git.get_git_diff(max_lines=2000, extra_exclude=extra_exclude)
+        diff = git.get_git_diff(max_lines=2000, exclude_patterns=extra_exclude)
         recent_commits = git.get_recent_commits(limit=5)
         
         project_context = ""

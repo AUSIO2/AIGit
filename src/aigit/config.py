@@ -44,7 +44,23 @@ class ConfigManager:
             "llm_provider": "openai",
             "api_base_url": "https://api.openai.com/v1",
             "api_key": "YOUR_API_KEY_HERE",
-            "model": "gpt-4o-mini"
+            "model": "gpt-4o-mini",
+            "exclude_patterns": [
+                "**/__pycache__/**",
+                "**/*.pyc",
+                "**/*.pyo",
+                "**/*.egg-info/**",
+                "**/.DS_Store",
+                "**/node_modules/**",
+                "**/*.min.js",
+                "**/*.min.css",
+                "**/.idea/**",
+                "**/dist/**",
+                "**/build/**",
+                "**/.gradle/**",
+                "**/target/**",
+                "**/*.class"
+            ]
         }
         if custom_values:
             default_config.update(custom_values)

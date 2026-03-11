@@ -1,5 +1,7 @@
-# aixgit
-A context-aware AI CLI proxy for Git. Converts natural language to Git commands seamlessly, acting as a smart wrapper around Git.
+# aixgit - AI powered Git Assistant
+
+aixgit is a context-aware AI CLI proxy for Git that translates natural language intent into Git commands.
+essly, acting as a smart wrapper around Git.
 
 ## Installation
 ```bash
@@ -8,10 +10,24 @@ pip install -e .
 ```
 
 ## Basic Usage
-```bash
-# In any Git repository, initialize aixgit:
-aixgit --init
 
+**Check Environment**:
+```bash
+aixgit --doctor
+# 或者使用简写
+aixgit -d
+```
+
+**Initialize aixgit** (in any Git repository):
+```bash
+aixgit --init
+```
+
+**Common Examples**:
+```bash
+# Commit changes
+aixgit commit "your message"
+```
 # This creates a `.aixgit` directory in the repository. (Note: we should probably consider if the config dir needs renaming too, but keeping .aixgit for now)
 # You must edit `.aixgit/config.json` to insert your OpenAI/Anthropic keys.
 # Remember to add `.aixgit` (or at least `.aixgit/config.json`) to your `.gitignore`.

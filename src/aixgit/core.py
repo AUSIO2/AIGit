@@ -17,8 +17,19 @@ console = Console()
 def init_aixgit_dir():
     """Initializes the .aixgit directory in current repo."""
     git = GitClient()
-    if not git.is_inside_work_tree():
-        console.print("[red]Error: Not inside a valid git repository.[/red]")
+    try:
+        if not git.is_inside_work_tree():
+            console.print("[yellow]Not inside a valid git repository.[/yellow]")
+            if Prompt.ask("Do you want to run 'git init' now?", choices=["y", "n"], default="y") == "y":
+                if git.git_init():
+                    console.print("[green]Git repository initialized successfully.[/green]")
+                else:
+                    console.print("[red]Failed to initialize Git repository.[/red]")
+                    return
+            else:
+                return
+    except RuntimeError as e:
+        console.print(f"[red]Error: {e}[/red]")
         return
 
     config = ConfigManager()
@@ -54,6 +65,94 @@ def init_aixgit_dir():
     console.print("Remember to add [bold].aixgit/config.json[/bold] to your .gitignore!")
 
 
+def run_doctor():
+    """Diagnoses and fixes issues with the aixgit environment."""
+    console.print(Panel("[bold cyan]🩺 aixgit Doctor - Diagnostic Tool[/bold cyan]", expand=False, border_style="cyan"))
+    
+    git = GitClient()
+    config = ConfigManager()
+    
+    # 1. Git Installation
+    try:
+        git._run_git(["git", "--version"])
+        console.print("[green]✔[/green] Git is installed and accessible.")
+    except Exception:
+        console.print("[red]✘[/red] Git is not found in PATH! Please install Git.")
+        return
+
+    # 2. Git Repository
+    try:
+        if git.is_inside_work_tree():
+            console.print("[green]✔[/green] Inside a valid Git repository.")
+        else:
+            console.print("[yellow]![/yellow] Not inside a Git repository.")
+            if Prompt.ask("Do you want to run 'git init' now?", choices=["y", "n"], default="y") == "y":
+                if git.git_init():
+                    console.print("[green]✔[/green] Git repository initialized.")
+                else:
+                    console.print("[red]✘[/red] Failed to initialize Git repository.")
+                    return
+            else:
+                return
+    except RuntimeError as e:
+        console.print(f"[red]✘[/red] {e}")
+        return
+
+    # 3. .aixgit Directory
+    if os.path.exists(config.aixgit_dir):
+        console.print("[green]✔[/green] .aixgit directory exists.")
+    else:
+        console.print("[yellow]![/yellow] .aixgit directory is missing.")
+        if Prompt.ask("Do you want to initialize .aixgit now?", choices=["y", "n"], default="y") == "y":
+            init_aixgit_dir()
+            # If init_aixgit_dir returns, it means it finished its own setup
+            console.print("[green]✔[/green] .aixgit initialized.")
+        else:
+            return
+
+    # 4. Configuration Validity
+    if os.path.exists(config.config_file):
+        if config.is_configured():
+            console.print(f"[green]✔[/green] Configuration is valid (Model: {config.get_model()}).")
+        else:
+            console.print("[red]✘[/red] Configuration is incomplete (missing API key).")
+            if Prompt.ask("Do you want to re-run setup to provide API keys?", choices=["y", "n"], default="y") == "y":
+                init_aixgit_dir()
+    else:
+        console.print("[red]✘[/red] config.json is missing.")
+        if Prompt.ask("Initialize default configuration?", choices=["y", "n"], default="y") == "y":
+            init_aixgit_dir()
+
+    # 5. Prompts
+    if os.path.exists(config.prompts_file):
+        console.print("[green]✔[/green] prompts.json exists.")
+    else:
+        console.print("[yellow]![/yellow] prompts.json is missing. Restoring defaults...")
+        config.create_default_prompts()
+        console.print("[green]✔[/green] prompts.json restored.")
+
+    # 6. .gitignore Security Check
+    gitignore_path = os.path.join(os.getcwd(), ".gitignore")
+    is_ignored = False
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path, "r") as f:
+            lines = f.readlines()
+            if any(".aixgit" in line and not line.strip().startswith("#") for line in lines):
+                is_ignored = True
+                
+    if is_ignored:
+        console.print("[green]✔[/green] .aixgit is ignored in .gitignore.")
+    else:
+        console.print("[yellow]![/yellow] [bold red]Security Warning:[/bold red] .aixgit/config.json is NOT in .gitignore!")
+        if Prompt.ask("Do you want to add .aixgit/config.json to .gitignore?", choices=["y", "n"], default="y") == "y":
+            mode = "a" if os.path.exists(gitignore_path) else "w"
+            with open(gitignore_path, mode) as f:
+                f.write("\n# aixgit config\n.aixgit/config.json\n")
+            console.print("[green]✔[/green] Added to .gitignore.")
+
+    console.print("\n[bold green]✨ All checks completed![/bold green]")
+
+
 def execute_prompt(prompt: str, command_type: str = "general", explain: str | None = None) -> int:
     config = ConfigManager()
     
@@ -63,8 +162,12 @@ def execute_prompt(prompt: str, command_type: str = "general", explain: str | No
         return 1
 
     git = GitClient()
-    if not git.is_inside_work_tree():
-        console.print("[red]Error: Not inside a valid git repository.[/red]")
+    try:
+        if not git.is_inside_work_tree():
+            console.print("[red]Error: Not inside a valid git repository.[/red]")
+            return 1
+    except RuntimeError as e:
+        console.print(f"[red]Error: {e}[/red]")
         return 1
 
     llm = LLMClient(config)

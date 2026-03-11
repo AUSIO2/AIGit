@@ -1,50 +1,37 @@
-name: Publish to PyPI
+name: Publish Python 🐍 distribution 📦 to PyPI
 
+# 触发条件：当推送以 'v' 开头的 tag 时才执行（例如 git push origin v1.0.1）
 on:
   push:
     tags:
-      - 'v*.*.*'   # Triggers on version tags like v0.1.1, v1.0.0
+      - 'v*'
 
 jobs:
-  build:
-    name: Build distribution
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install build tools
-        run: pip install build
-
-      - name: Build package
-        run: python -m build
-
-      - name: Store distribution packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-
-  publish-to-pypi:
-    name: Publish to PyPI
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/aixgit
-    permissions:
-      id-token: write   # Required for OIDC Trusted Publisher
+  build-and-publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest # 在最新的 Ubuntu 虚拟环境中运行
 
     steps:
-      - name: Download distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
+    # 1. 拉取你的最新代码
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+    # 2. 设置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+
+    # 3. 安装打包工具 build
+    - name: Install build dependencies
+      run: python -m pip install --upgrade pip build
+
+    # 4. 执行打包命令（生成 .tar.gz 和 .whl）
+    - name: Build package
+      run: python -m build
+
+    # 5. 使用官方的 Action 将打包好的文件上传到 PyPI
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI}}
